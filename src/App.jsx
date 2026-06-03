@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSortVisualizer } from "./useSortVisualizer";
 import { useSearchVisualizer } from "./useSearchVisualizer";
 import { useGraphVisualizer } from "./useGraphVisualizer";
+import ComparisonView from "./ComparisonView";
 
 export default function App() {
   const [mode, setMode] = useState("Sorting");
@@ -13,7 +14,7 @@ export default function App() {
   const [selectedGraphAlgorithm, setSelectedGraphAlgorithm] = useState("BFS");
   const [targetValue, setTargetValue] = useState(120);
   const [currentExecutingLine, setCurrentExecutingLine] = useState(null);
-const [distributionType, setDistributionType] = useState("Random");
+  const [distributionType, setDistributionType] = useState("Random");
 
   const sortVisualizer = useSortVisualizer(arraySize);
   const searchVisualizer = useSearchVisualizer(arraySize);
@@ -22,6 +23,7 @@ const [distributionType, setDistributionType] = useState("Random");
   const isSortingMode = mode === "Sorting";
   const isSearchingMode = mode === "Searching";
   const isGraphMode = mode === "Graphs";
+  const isCompareMode = mode === "Compare";
 
   const sortingRegistry = useMemo(
     () => ({
@@ -202,20 +204,20 @@ const [distributionType, setDistributionType] = useState("Random");
   const activeMetrics = isSortingMode
     ? sortVisualizer.metrics
     : isSearchingMode
-    ? searchVisualizer.metrics
-    : graphVisualizer.metrics;
+      ? searchVisualizer.metrics
+      : graphVisualizer.metrics;
 
   const isRunning = isSortingMode
     ? sortVisualizer.isSorting
     : isSearchingMode
-    ? searchVisualizer.isSearching
-    : graphVisualizer.isTraversing;
+      ? searchVisualizer.isSearching
+      : graphVisualizer.isTraversing;
 
   const activeAlgorithm = isSortingMode
     ? sortingRegistry[selectedSortAlgorithm]
     : isSearchingMode
-    ? searchingRegistry[selectedSearchAlgorithm]
-    : graphRegistry[selectedGraphAlgorithm];
+      ? searchingRegistry[selectedSearchAlgorithm]
+      : graphRegistry[selectedGraphAlgorithm];
 
   useEffect(() => {
     if (isSortingMode) {
@@ -323,9 +325,22 @@ const [distributionType, setDistributionType] = useState("Random");
         >
           Graphs
         </button>
+        <button
+          onClick={() => setMode("Compare")}
+          disabled={isRunning}
+          style={{
+            ...styles.modeButton,
+            ...(mode === "Compare" ? styles.modeButtonActive : {}),
+          }}
+        >
+          Compare
+        </button>
       </section>
-
-      <section style={styles.hudPanel}>
+     {isCompareMode ? (
+  <ComparisonView styles={styles} />
+) : (
+  <>
+    <section style={styles.hudPanel}>
         <div style={styles.metricCard}>
           <span style={styles.metricLabel}>
             {isGraphMode ? "Nodes Processed" : "Comparisons"}
@@ -669,9 +684,11 @@ const [distributionType, setDistributionType] = useState("Random");
               : "Start Search"}
           </button>
         </div>
-      </section>
-    </div>
-  );
+          </section>
+    </>
+  )}
+</div>
+);
 }
 
 const styles = {

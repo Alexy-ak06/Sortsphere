@@ -25,7 +25,6 @@ export function useSortVisualizer(size = 35) {
       setIsSorting(false);
 
       let values = [];
-
       const base = Array.from(
         { length: size },
         (_, index) => Math.floor((index + 1) * (340 / size)) + 40
@@ -34,30 +33,23 @@ export function useSortVisualizer(size = 35) {
       switch (type) {
         case "Nearly Sorted":
           values = [...base];
-
           for (let i = 0; i < Math.max(1, Math.floor(size / 5)); i++) {
             const indexA = Math.floor(Math.random() * size);
             const indexB = Math.floor(Math.random() * size);
             [values[indexA], values[indexB]] = [values[indexB], values[indexA]];
           }
-
           break;
-
         case "Reverse Sorted":
           values = [...base].reverse();
           break;
-
         case "Few Unique": {
           const uniqueValues = [80, 160, 240, 320];
-
           values = Array.from(
             { length: size },
             () => uniqueValues[Math.floor(Math.random() * uniqueValues.length)]
           );
-
           break;
         }
-
         case "Random":
         default:
           values = Array.from(
@@ -69,14 +61,18 @@ export function useSortVisualizer(size = 35) {
 
       setArray(values);
       setBarColors(Array(size).fill(defaultColor));
-      setMetrics({
-        comparisons: 0,
-        swaps: 0,
-        timeElapsed: 0,
-      });
+      setMetrics({ comparisons: 0, swaps: 0, timeElapsed: 0 });
     },
     [size]
   );
+
+  const loadArray = useCallback((values) => {
+    activeSortToken.current++;
+    setIsSorting(false);
+    setArray([...values]);
+    setBarColors(Array(values.length).fill(defaultColor));
+    setMetrics({ comparisons: 0, swaps: 0, timeElapsed: 0 });
+  }, []);
 
   const updateVisualizerState = (currentArray, currentColors, comparisons, operations, startTime) => {
     setArray([...currentArray]);
@@ -90,7 +86,6 @@ export function useSortVisualizer(size = 35) {
 
   const isCancelled = (token) => token !== activeSortToken.current;
 
-  // --- Sorting Algorithms ---
   const runBubbleSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
     setIsSorting(true);
@@ -297,5 +292,17 @@ export function useSortVisualizer(size = 35) {
     }
   };
 
-  return { array, barColors, isSorting, metrics, generateNewArray, runBubbleSort, runSelectionSort, runInsertionSort, runMergeSort, runQuickSort };
+  return {
+    array,
+    barColors,
+    isSorting,
+    metrics,
+    generateNewArray,
+    loadArray,
+    runBubbleSort,
+    runSelectionSort,
+    runInsertionSort,
+    runMergeSort,
+    runQuickSort,
+  };
 }
