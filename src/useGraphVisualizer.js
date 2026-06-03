@@ -16,7 +16,6 @@ const initialGraph = {
   F: [],
 };
 
-
 const createInitialColors = () => 
   Object.keys(initialGraph).reduce((acc, node) => {
     acc[node] = defaultNodeColor;
@@ -55,8 +54,9 @@ export function useGraphVisualizer() {
     });
   };
 
-  const runBFS = async (startNode = "A", speed = 300) => {
+  const runBFS = async (startNode = "A", speed = 300, onLineExecute) => {
     if (isTraversing) return;
+
     setIsTraversing(true);
 
     const currentToken = ++activeGraphToken.current;
@@ -66,17 +66,31 @@ export function useGraphVisualizer() {
     let visitedCount = 0;
     const startTime = performance.now();
 
+    onLineExecute?.(0);
+    await sleep(speed * 0.35);
+
     colors[startNode] = queuedNodeColor;
     updateGraphState(colors, visitedCount, "Queued", startTime);
     await sleep(speed);
 
+    onLineExecute?.(1);
+    await sleep(speed * 0.35);
+
     while (queue.length > 0) {
       if (currentToken !== activeGraphToken.current) {
-  setIsTraversing(false);
-  return;
-}
+        setIsTraversing(false);
+        onLineExecute?.(null);
+        return;
+      }
+
+      onLineExecute?.(2);
+      await sleep(speed * 0.35);
 
       const currentNode = queue.shift();
+
+      onLineExecute?.(3);
+      await sleep(speed * 0.35);
+
       if (visited.has(currentNode)) continue;
 
       colors[currentNode] = activeNodeColor;
@@ -85,27 +99,58 @@ export function useGraphVisualizer() {
 
       visited.add(currentNode);
       visitedCount++;
+
       colors[currentNode] = visitedNodeColor;
       updateGraphState(colors, visitedCount, `Visited ${currentNode}`, startTime);
       await sleep(speed);
 
       for (const neighbor of graph[currentNode]) {
+        if (currentToken !== activeGraphToken.current) {
+          setIsTraversing(false);
+          onLineExecute?.(null);
+          return;
+        }
+
+        onLineExecute?.(4);
+        await sleep(speed * 0.35);
+
         if (!visited.has(neighbor) && !queue.includes(neighbor)) {
+          onLineExecute?.(5);
+          await sleep(speed * 0.35);
+
           queue.push(neighbor);
           colors[neighbor] = queuedNodeColor;
-          updateGraphState(colors, visitedCount, `Queued ${neighbor}`, startTime);
+
+          updateGraphState(
+            colors,
+            visitedCount,
+            `Queued ${neighbor}`,
+            startTime
+          );
+
           await sleep(speed);
         }
       }
+
+      onLineExecute?.(2);
+      await sleep(speed * 0.35);
     }
 
     if (currentToken === activeGraphToken.current) {
-      updateGraphState(colors, visitedCount, "BFS Traversal Complete", startTime);
+      updateGraphState(
+        colors,
+        visitedCount,
+        "BFS Traversal Complete",
+        startTime
+      );
+
       setIsTraversing(false);
+      await sleep(speed * 0.5);
+      onLineExecute?.(null);
     }
   };
 
-  const runDFS = async (startNode = "A", speed = 300) => {
+  const runDFS = async (startNode = "A", speed = 300, onLineExecute) => {
     if (isTraversing) return;
     setIsTraversing(true);
 
@@ -117,13 +162,20 @@ export function useGraphVisualizer() {
 
     const dfsHelper = async (node) => {
       if (currentToken !== activeGraphToken.current) {
-  setIsTraversing(false);
-  return false;
-}
+        setIsTraversing(false);
+        onLineExecute?.(null);
+        return false;
+      }
+
+      onLineExecute?.(0);
+      await sleep(speed * 0.35);
 
       colors[node] = activeNodeColor;
       updateGraphState(colors, visitedCount, `Visiting ${node}`, startTime);
       await sleep(speed);
+
+      onLineExecute?.(1);
+      await sleep(speed * 0.35);
 
       visited.add(node);
       visitedCount++;
@@ -131,12 +183,27 @@ export function useGraphVisualizer() {
       updateGraphState(colors, visitedCount, `Visited ${node}`, startTime);
       await sleep(speed);
 
+      onLineExecute?.(2);
+      await sleep(speed * 0.35);
+
       for (const neighbor of graph[node]) {
+        if (currentToken !== activeGraphToken.current) {
+          setIsTraversing(false);
+          onLineExecute?.(null);
+          return false;
+        }
+
+        onLineExecute?.(3);
+        await sleep(speed * 0.35);
+
         if (!visited.has(neighbor)) {
           colors[neighbor] = queuedNodeColor;
           updateGraphState(colors, visitedCount, `Discovered ${neighbor}`, startTime);
           await sleep(speed);
           
+          onLineExecute?.(4);
+          await sleep(speed * 0.35);
+
           const continued = await dfsHelper(neighbor);
           if (!continued) return false;
         }
@@ -149,6 +216,8 @@ export function useGraphVisualizer() {
     if (completedSuccessfully && currentToken === activeGraphToken.current) {
       updateGraphState(colors, visitedCount, "DFS Traversal Complete", startTime);
       setIsTraversing(false);
+      await sleep(speed * 0.5);
+      onLineExecute?.(null);
     }
   };
 

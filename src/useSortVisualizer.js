@@ -1,4 +1,3 @@
-
 import { useCallback, useRef, useState } from "react";
 
 const defaultColor = "#8b5cf6";
@@ -454,7 +453,7 @@ export function useSortVisualizer(size = 35) {
     }
   };
 
-  const runQuickSort = async (speed = 30) => {
+  const runQuickSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
 
     setIsSorting(true);
@@ -468,6 +467,8 @@ export function useSortVisualizer(size = 35) {
     const startTime = performance.now();
 
     const partition = async (low, high) => {
+      onLineExecute?.(1);
+      await sleep(speed * 0.35);
       const pivot = values[high];
       let i = low - 1;
 
@@ -479,6 +480,7 @@ export function useSortVisualizer(size = 35) {
       for (let j = low; j < high; j++) {
         if (currentToken !== activeSortToken.current) {
           setIsSorting(false);
+          onLineExecute?.(null);
           return -1;
         }
 
@@ -489,12 +491,18 @@ export function useSortVisualizer(size = 35) {
 
         await sleep(speed);
 
+        onLineExecute?.(2);
+        await sleep(speed * 0.35);
+
         if (values[j] < pivot) {
           i++;
           operations++;
 
           colors[i] = swapColor;
           colors[j] = swapColor;
+
+          onLineExecute?.(3);
+          await sleep(speed * 0.35);
 
           [values[i], values[j]] = [values[j], values[i]];
 
@@ -511,10 +519,14 @@ export function useSortVisualizer(size = 35) {
 
       if (currentToken !== activeSortToken.current) {
         setIsSorting(false);
+        onLineExecute?.(null);
         return -1;
       }
 
       operations++;
+
+      onLineExecute?.(4);
+      await sleep(speed * 0.35);
 
       [values[i + 1], values[high]] = [values[high], values[i + 1]];
 
@@ -531,15 +543,24 @@ export function useSortVisualizer(size = 35) {
     const quickSortHelper = async (low, high) => {
       if (currentToken !== activeSortToken.current) {
         setIsSorting(false);
+        onLineExecute?.(null);
         return;
       }
+
+      onLineExecute?.(0);
+      await sleep(speed * 0.35);
 
       if (low < high) {
         const pivotIndex = await partition(low, high);
 
         if (pivotIndex === -1) return;
 
+        onLineExecute?.(5);
+        await sleep(speed * 0.35);
         await quickSortHelper(low, pivotIndex - 1);
+
+        onLineExecute?.(6);
+        await sleep(speed * 0.35);
         await quickSortHelper(pivotIndex + 1, high);
       } else if (low === high) {
         colors[low] = sortedColor;
@@ -568,6 +589,8 @@ export function useSortVisualizer(size = 35) {
       );
 
       setIsSorting(false);
+      await sleep(speed * 0.5);
+      onLineExecute?.(null);
     }
   };
 
@@ -584,4 +607,3 @@ export function useSortVisualizer(size = 35) {
     runQuickSort,
   };
 }
-
