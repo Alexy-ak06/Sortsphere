@@ -13,6 +13,7 @@ export default function App() {
   const [selectedGraphAlgorithm, setSelectedGraphAlgorithm] = useState("BFS");
   const [targetValue, setTargetValue] = useState(120);
   const [currentExecutingLine, setCurrentExecutingLine] = useState(null);
+const [distributionType, setDistributionType] = useState("Random");
 
   const sortVisualizer = useSortVisualizer(arraySize);
   const searchVisualizer = useSearchVisualizer(arraySize);
@@ -218,7 +219,7 @@ export default function App() {
 
   useEffect(() => {
     if (isSortingMode) {
-      sortVisualizer.generateNewArray();
+      sortVisualizer.generateNewArray(distributionType);
     } else if (isSearchingMode) {
       searchVisualizer.generateNewArray(selectedSearchAlgorithm === "Binary Search");
     } else {
@@ -236,7 +237,7 @@ export default function App() {
 
   const handleGenerate = () => {
     if (isSortingMode) {
-      sortVisualizer.generateNewArray();
+      sortVisualizer.generateNewArray(distributionType);
     } else if (isSearchingMode) {
       searchVisualizer.generateNewArray(selectedSearchAlgorithm === "Binary Search");
     } else {
@@ -519,7 +520,7 @@ export default function App() {
         style={{
           ...styles.controlPanel,
           gridTemplateColumns: isSortingMode
-            ? "1fr 1fr 1fr auto"
+            ? "1fr 1fr 1fr 1fr auto"
             : isSearchingMode
             ? "1fr 1fr 1fr 1fr auto"
             : "1fr 1fr auto",
@@ -573,7 +574,25 @@ export default function App() {
             style={styles.slider}
           />
         </div>
-
+{isSortingMode && (
+  <div style={styles.controlGroup}>
+    <label style={styles.controlLabel}>Distribution</label>
+    <select
+      value={distributionType}
+      disabled={isRunning}
+      onChange={(event) => {
+        setDistributionType(event.target.value);
+        sortVisualizer.generateNewArray(event.target.value);
+      }}
+      style={styles.select}
+    >
+      <option value="Random">Random</option>
+      <option value="Nearly Sorted">Nearly Sorted</option>
+      <option value="Reverse Sorted">Reverse Sorted</option>
+      <option value="Few Unique">Few Unique</option>
+    </select>
+  </div>
+)}
         {!isGraphMode && (
           <div style={styles.controlGroup}>
             <label style={styles.controlLabel}>Array Size: {arraySize}</label>

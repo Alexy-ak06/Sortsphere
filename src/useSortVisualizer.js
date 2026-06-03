@@ -19,14 +19,64 @@ export function useSortVisualizer(size = 35) {
 
   const activeSortToken = useRef(0);
 
-  const generateNewArray = useCallback(() => {
-    activeSortToken.current++;
-    setIsSorting(false);
-    const values = Array.from({ length: size }, () => Math.floor(Math.random() * 340) + 40);
-    setArray(values);
-    setBarColors(Array(size).fill(defaultColor));
-    setMetrics({ comparisons: 0, swaps: 0, timeElapsed: 0 });
-  }, [size]);
+  const generateNewArray = useCallback(
+    (type = "Random") => {
+      activeSortToken.current++;
+      setIsSorting(false);
+
+      let values = [];
+
+      const base = Array.from(
+        { length: size },
+        (_, index) => Math.floor((index + 1) * (340 / size)) + 40
+      );
+
+      switch (type) {
+        case "Nearly Sorted":
+          values = [...base];
+
+          for (let i = 0; i < Math.max(1, Math.floor(size / 5)); i++) {
+            const indexA = Math.floor(Math.random() * size);
+            const indexB = Math.floor(Math.random() * size);
+            [values[indexA], values[indexB]] = [values[indexB], values[indexA]];
+          }
+
+          break;
+
+        case "Reverse Sorted":
+          values = [...base].reverse();
+          break;
+
+        case "Few Unique": {
+          const uniqueValues = [80, 160, 240, 320];
+
+          values = Array.from(
+            { length: size },
+            () => uniqueValues[Math.floor(Math.random() * uniqueValues.length)]
+          );
+
+          break;
+        }
+
+        case "Random":
+        default:
+          values = Array.from(
+            { length: size },
+            () => Math.floor(Math.random() * 340) + 40
+          );
+          break;
+      }
+
+      setArray(values);
+      setBarColors(Array(size).fill(defaultColor));
+      setMetrics({
+        comparisons: 0,
+        swaps: 0,
+        timeElapsed: 0,
+      });
+    },
+    [size]
+  );
 
   const updateVisualizerState = (currentArray, currentColors, comparisons, operations, startTime) => {
     setArray([...currentArray]);
@@ -40,6 +90,7 @@ export function useSortVisualizer(size = 35) {
 
   const isCancelled = (token) => token !== activeSortToken.current;
 
+  // --- Sorting Algorithms ---
   const runBubbleSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
     setIsSorting(true);
