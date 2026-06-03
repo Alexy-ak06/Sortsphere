@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from "react";
 import { useSortVisualizer } from "./useSortVisualizer";
 
@@ -7,6 +8,21 @@ const COMPLEXITY = {
   "Insertion Sort": "O(n²)",
   "Merge Sort": "O(n log n)",
   "Quick Sort": "O(n log n)",
+};
+
+const getPrediction = (algoA, algoB, distributionType) => {
+  const strongChoices = {
+    "Nearly Sorted": "Insertion Sort",
+    "Reverse Sorted": "Merge Sort",
+    "Few Unique": "Merge Sort",
+    Gaussian: "Quick Sort",
+    Mountain: "Merge Sort",
+    Random: "Quick Sort",
+  };
+  const predicted = strongChoices[distributionType];
+  if (algoA === predicted) return algoA;
+  if (algoB === predicted) return algoB;
+  return COMPLEXITY[algoA] === "O(n log n)" ? algoA : algoB;
 };
 
 const createDistributionArray = (type, size) => {
@@ -23,6 +39,19 @@ const createDistributionArray = (type, size) => {
     case "Few Unique":
       const u = [80, 160, 240, 320];
       return Array.from({ length: size }, () => u[Math.floor(Math.random() * u.length)]);
+    case "Gaussian":
+      return Array.from({ length: size }, () => {
+        const u = Math.random();
+        const v = Math.random();
+        const gaussian = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+        return Math.max(40, Math.min(380, Math.floor(210 + gaussian * 55)));
+      });
+    case "Mountain":
+      return Array.from({ length: size }, (_, i) => {
+        const midpoint = size / 2;
+        if (i <= midpoint) return Math.floor(40 + (340 * i) / midpoint);
+        return Math.floor(380 - (340 * (i - midpoint)) / midpoint);
+      });
     default: return Array.from({ length: size }, () => Math.floor(Math.random() * 340) + 40);
   }
 };
@@ -39,6 +68,7 @@ export default function ComparisonView({ styles }) {
   const left = useSortVisualizer(arraySize);
   const right = useSortVisualizer(arraySize);
   const isRunning = left.isSorting || right.isSorting;
+  const predictedWinner = getPrediction(algoA, algoB, distributionType);
 
   const ALGORITHM_MAP = useMemo(() => ({
     "Bubble Sort": { left: left.runBubbleSort, right: right.runBubbleSort },
@@ -48,7 +78,6 @@ export default function ComparisonView({ styles }) {
     "Quick Sort": { left: left.runQuickSort, right: right.runQuickSort },
   }), [left, right]);
 
-  // Auto-prepare effect
   useEffect(() => {
     if (isRunning) return;
     const source = createDistributionArray(distributionType, arraySize);
@@ -96,6 +125,8 @@ export default function ComparisonView({ styles }) {
             <option value="Nearly Sorted">Nearly Sorted</option>
             <option value="Reverse Sorted">Reverse Sorted</option>
             <option value="Few Unique">Few Unique</option>
+            <option value="Gaussian">Gaussian</option>
+            <option value="Mountain">Mountain</option>
           </select>
         </div>
         <div style={styles.controlGroup}>
@@ -111,6 +142,10 @@ export default function ComparisonView({ styles }) {
         </div>
       </section>
 
+      <section style={compareStyles.oracle}>
+        🔮 Oracle Prediction: {predictedWinner} is likely to win on {distributionType} data.
+      </section>
+
       <section style={compareStyles.grid}>
         {renderCard(left, algoA, arraySize)}
         {renderCard(right, algoB, arraySize)}
@@ -118,9 +153,7 @@ export default function ComparisonView({ styles }) {
 
       {winner && (
         <section style={compareStyles.winner}>
-          {winner === "Tie" ? (
-            "Result: Tie"
-          ) : (
+          {winner === "Tie" ? "Result: Tie" : (
             <>
               🏆 Winner: {winner}
               <div style={compareStyles.winnerSubtext}>
@@ -149,7 +182,7 @@ function renderCard(viz, name, arraySize) {
       </div>
       <div style={compareStyles.visualStage}>
         {viz.array.map((val, i) => (
-          <div key={i} style={{ width: `${320/arraySize}px`, height: `${(val / maxValue) * 100}%`, backgroundColor: viz.barColors[i], margin: "0 1px" }} />
+          <div key={i} style={{ width: `${320/arraySize}px`, height: `${(val / maxValue) * 100}%`, backgroundColor: viz.barColors ? viz.barColors[i] : "#475569", margin: "0 1px" }} />
         ))}
       </div>
       <div style={compareStyles.metrics}>
@@ -174,5 +207,7 @@ const compareStyles = {
   visualStage: { height: "380px", display: "flex", alignItems: "flex-end", justifyContent: "center", background: "#09050f", borderRadius: "14px", padding: "20px 18px 18px 18px", overflow: "hidden" },
   metrics: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginTop: "12px", color: "#d4d4d8", fontSize: "0.85rem" },
   winner: { background: "linear-gradient(to right, #8b5cf6, #ec4899)", color: "#fff", borderRadius: "18px", padding: "16px", textAlign: "center", fontWeight: "800", fontSize: "1.2rem" },
-  winnerSubtext: { marginTop: "6px", fontSize: "0.9rem", fontWeight: "600", opacity: 0.9 }
+  winnerSubtext: { marginTop: "6px", fontSize: "0.9rem", fontWeight: "600", opacity: 0.9 },
+  oracle: { background: "#151522", border: "1px solid #ec4899", borderRadius: "18px", padding: "14px 18px", color: "#f8fafc", fontWeight: "700", textAlign: "center" }
 };
+
