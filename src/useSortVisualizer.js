@@ -223,7 +223,7 @@ export function useSortVisualizer(size = 35) {
     onLineExecute?.(null);
   };
 
-  const runInsertionSort = async (speed = 30) => {
+  const runInsertionSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
 
     setIsSorting(true);
@@ -243,10 +243,18 @@ export function useSortVisualizer(size = 35) {
     for (let i = 1; i < values.length; i++) {
       if (isCancelled(currentToken)) {
         setIsSorting(false);
+        onLineExecute?.(null);
         return;
       }
 
+      onLineExecute?.(0);
+      await sleep(speed * 0.35);
+
       const key = values[i];
+
+      onLineExecute?.(1);
+      await sleep(speed * 0.35);
+
       let j = i - 1;
 
       colors[i] = compareColor;
@@ -257,26 +265,49 @@ export function useSortVisualizer(size = 35) {
       while (j >= 0) {
         if (isCancelled(currentToken)) {
           setIsSorting(false);
+          onLineExecute?.(null);
           return;
         }
 
+        onLineExecute?.(2);
+        await sleep(speed * 0.35);
+
         comparisons++;
 
-        if (values[j] <= key) break;
+        onLineExecute?.(3);
+        await sleep(speed * 0.35);
+
+        if (values[j] <= key) {
+          break;
+        }
+
+        onLineExecute?.(4);
+        await sleep(speed * 0.35);
 
         operations++;
         colors[j] = swapColor;
         colors[j + 1] = swapColor;
+
         values[j + 1] = values[j];
 
-        updateVisualizerState(values, colors, comparisons, operations, startTime);
+        updateVisualizerState(
+          values,
+          colors,
+          comparisons,
+          operations,
+          startTime
+        );
 
         await sleep(speed);
 
         colors[j] = sortedColor;
         colors[j + 1] = sortedColor;
+
         j--;
       }
+
+      onLineExecute?.(5);
+      await sleep(speed * 0.35);
 
       values[j + 1] = key;
 
@@ -288,8 +319,18 @@ export function useSortVisualizer(size = 35) {
     }
 
     colors.fill(sortedColor);
-    updateVisualizerState(values, colors, comparisons, operations, startTime);
+
+    updateVisualizerState(
+      values,
+      colors,
+      comparisons,
+      operations,
+      startTime
+    );
+
     setIsSorting(false);
+    await sleep(speed * 0.5);
+    onLineExecute?.(null);
   };
 
   const runMergeSort = async (speed = 30) => {
