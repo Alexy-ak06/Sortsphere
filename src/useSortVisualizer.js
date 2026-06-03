@@ -1,3 +1,4 @@
+
 import { useCallback, useRef, useState } from "react";
 
 const defaultColor = "#8b5cf6";
@@ -55,7 +56,7 @@ export function useSortVisualizer(size = 35) {
 
   const isCancelled = (token) => token !== activeSortToken.current;
 
-  const runBubbleSort = async (speed = 30) => {
+  const runBubbleSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
 
     setIsSorting(true);
@@ -67,10 +68,30 @@ export function useSortVisualizer(size = 35) {
     let operations = 0;
     const startTime = performance.now();
 
-    for (let i = 0; i < values.length - 1; i++) {
-      for (let j = 0; j < values.length - i - 1; j++) {
+    let swapped;
+    let loopCount = 0;
+
+    onLineExecute?.(0);
+    await sleep(speed * 0.35);
+
+    do {
+      if (isCancelled(currentToken)) {
+        setIsSorting(false);
+        onLineExecute?.(null);
+        return;
+      }
+
+      onLineExecute?.(1);
+      swapped = false;
+      await sleep(speed * 0.35);
+
+      onLineExecute?.(2);
+      await sleep(speed * 0.35);
+
+      for (let j = 0; j < values.length - loopCount - 1; j++) {
         if (isCancelled(currentToken)) {
           setIsSorting(false);
+          onLineExecute?.(null);
           return;
         }
 
@@ -78,31 +99,49 @@ export function useSortVisualizer(size = 35) {
         colors[j] = compareColor;
         colors[j + 1] = compareColor;
         updateVisualizerState(values, colors, comparisons, operations, startTime);
-
         await sleep(speed);
 
+        onLineExecute?.(3);
+        await sleep(speed * 0.35);
+
         if (values[j] > values[j + 1]) {
+          onLineExecute?.(4);
+          await sleep(speed * 0.35);
+
           operations++;
           colors[j] = swapColor;
           colors[j + 1] = swapColor;
           updateVisualizerState(values, colors, comparisons, operations, startTime);
-
           await sleep(speed);
 
           [values[j], values[j + 1]] = [values[j + 1], values[j]];
+
+          onLineExecute?.(5);
+          swapped = true;
+          await sleep(speed * 0.35);
         }
 
         colors[j] = defaultColor;
         colors[j + 1] = defaultColor;
+
+        onLineExecute?.(2);
       }
 
-      colors[values.length - i - 1] = sortedColor;
+      colors[values.length - loopCount - 1] = sortedColor;
       updateVisualizerState(values, colors, comparisons, operations, startTime);
-    }
 
-    colors[0] = sortedColor;
+      loopCount++;
+
+      onLineExecute?.(6);
+      await sleep(speed * 0.35);
+    } while (swapped);
+
+    colors.fill(sortedColor);
     updateVisualizerState(values, colors, comparisons, operations, startTime);
+
     setIsSorting(false);
+    await sleep(speed * 0.5);
+    onLineExecute?.(null);
   };
 
   const runSelectionSort = async (speed = 30) => {
@@ -344,95 +383,111 @@ export function useSortVisualizer(size = 35) {
       setIsSorting(false);
     }
   };
-const runQuickSort = async (speed = 30) => {
-  if (isSorting) return;
 
-  setIsSorting(true);
+  const runQuickSort = async (speed = 30) => {
+    if (isSorting) return;
 
-  const currentToken = ++activeSortToken.current;
-  const values = [...array];
-  const colors = Array(values.length).fill(defaultColor);
+    setIsSorting(true);
 
-  let comparisons = 0;
-  let operations = 0;
-  const startTime = performance.now();
+    const currentToken = ++activeSortToken.current;
+    const values = [...array];
+    const colors = Array(values.length).fill(defaultColor);
 
-  const partition = async (low, high) => {
-    const pivot = values[high];
-    let i = low - 1;
+    let comparisons = 0;
+    let operations = 0;
+    const startTime = performance.now();
 
-    colors[high] = compareColor;
-    updateVisualizerState(values, colors, comparisons, operations, startTime);
+    const partition = async (low, high) => {
+      const pivot = values[high];
+      let i = low - 1;
 
-    await sleep(speed);
+      colors[high] = compareColor;
+      updateVisualizerState(values, colors, comparisons, operations, startTime);
 
-    for (let j = low; j < high; j++) {
+      await sleep(speed);
+
+      for (let j = low; j < high; j++) {
+        if (currentToken !== activeSortToken.current) {
+          setIsSorting(false);
+          return -1;
+        }
+
+        comparisons++;
+
+        colors[j] = compareColor;
+        updateVisualizerState(values, colors, comparisons, operations, startTime);
+
+        await sleep(speed);
+
+        if (values[j] < pivot) {
+          i++;
+          operations++;
+
+          colors[i] = swapColor;
+          colors[j] = swapColor;
+
+          [values[i], values[j]] = [values[j], values[i]];
+
+          updateVisualizerState(values, colors, comparisons, operations, startTime);
+
+          await sleep(speed);
+
+          colors[i] = defaultColor;
+          colors[j] = defaultColor;
+        } else {
+          colors[j] = defaultColor;
+        }
+      }
+
       if (currentToken !== activeSortToken.current) {
         setIsSorting(false);
         return -1;
       }
 
-      comparisons++;
+      operations++;
 
-      colors[j] = compareColor;
+      [values[i + 1], values[high]] = [values[high], values[i + 1]];
+
+      colors[high] = defaultColor;
+      colors[i + 1] = sortedColor;
+
       updateVisualizerState(values, colors, comparisons, operations, startTime);
 
       await sleep(speed);
 
-      if (values[j] < pivot) {
-        i++;
-        operations++;
+      return i + 1;
+    };
 
-        colors[i] = swapColor;
-        colors[j] = swapColor;
-
-        [values[i], values[j]] = [values[j], values[i]];
-
-        updateVisualizerState(values, colors, comparisons, operations, startTime);
-
-        await sleep(speed);
-
-        colors[i] = defaultColor;
-        colors[j] = defaultColor;
-      } else {
-        colors[j] = defaultColor;
+    const quickSortHelper = async (low, high) => {
+      if (currentToken !== activeSortToken.current) {
+        setIsSorting(false);
+        return;
       }
-    }
 
-    if (currentToken !== activeSortToken.current) {
-      setIsSorting(false);
-      return -1;
-    }
+      if (low < high) {
+        const pivotIndex = await partition(low, high);
 
-    operations++;
+        if (pivotIndex === -1) return;
 
-    [values[i + 1], values[high]] = [values[high], values[i + 1]];
+        await quickSortHelper(low, pivotIndex - 1);
+        await quickSortHelper(pivotIndex + 1, high);
+      } else if (low === high) {
+        colors[low] = sortedColor;
 
-    colors[high] = defaultColor;
-    colors[i + 1] = sortedColor;
+        updateVisualizerState(
+          values,
+          colors,
+          comparisons,
+          operations,
+          startTime
+        );
+      }
+    };
 
-    updateVisualizerState(values, colors, comparisons, operations, startTime);
+    await quickSortHelper(0, values.length - 1);
 
-    await sleep(speed);
-
-    return i + 1;
-  };
-
-  const quickSortHelper = async (low, high) => {
-    if (currentToken !== activeSortToken.current) {
-      setIsSorting(false);
-      return;
-    }
-
-    if (low < high) {
-      const pivotIndex = await partition(low, high);
-
-      if (pivotIndex === -1) return;
-
-      await quickSortHelper(low, pivotIndex - 1);
-      await quickSortHelper(pivotIndex + 1, high);
-    } else if (low === high) {
-      colors[low] = sortedColor;
+    if (currentToken === activeSortToken.current) {
+      colors.fill(sortedColor);
 
       updateVisualizerState(
         values,
@@ -441,25 +496,11 @@ const runQuickSort = async (speed = 30) => {
         operations,
         startTime
       );
+
+      setIsSorting(false);
     }
   };
 
-  await quickSortHelper(0, values.length - 1);
-
-  if (currentToken === activeSortToken.current) {
-    colors.fill(sortedColor);
-
-    updateVisualizerState(
-      values,
-      colors,
-      comparisons,
-      operations,
-      startTime
-    );
-
-    setIsSorting(false);
-  }
-};
   return {
     array,
     barColors,
@@ -473,3 +514,4 @@ const runQuickSort = async (speed = 30) => {
     runQuickSort,
   };
 }
+

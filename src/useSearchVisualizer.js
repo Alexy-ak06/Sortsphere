@@ -77,6 +77,7 @@ export function useSearchVisualizer(size = 35) {
     for (let index = 0; index < array.length; index++) {
       if (isCancelled(currentToken)) {
         setIsSearching(false);
+        onLineExecute?.(null);
         return;
       }
 
@@ -101,6 +102,8 @@ export function useSearchVisualizer(size = 35) {
           startTime
         );
         setIsSearching(false);
+        await sleep(speed * 0.5);
+        onLineExecute?.(null);
         return;
       }
 
@@ -136,6 +139,7 @@ export function useSearchVisualizer(size = 35) {
     while (left <= right) {
       if (isCancelled(currentToken)) {
         setIsSearching(false);
+        onLineExecute?.(null);
         return;
       }
 
@@ -162,6 +166,8 @@ export function useSearchVisualizer(size = 35) {
           startTime
         );
         setIsSearching(false);
+        await sleep(speed * 0.5);
+        onLineExecute?.(null);
         return;
       }
 
