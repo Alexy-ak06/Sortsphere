@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from "react";
 import { useSortVisualizer } from "./useSortVisualizer";
 
@@ -11,18 +10,44 @@ const COMPLEXITY = {
 };
 
 const getPrediction = (algoA, algoB, distributionType) => {
-  const strongChoices = {
-    "Nearly Sorted": "Insertion Sort",
-    "Reverse Sorted": "Merge Sort",
-    "Few Unique": "Merge Sort",
-    Gaussian: "Quick Sort",
-    Mountain: "Merge Sort",
-    Random: "Quick Sort",
+  const rankings = {
+    Random: ["Quick Sort", "Merge Sort", "Insertion Sort", "Selection Sort", "Bubble Sort"],
+    Gaussian: ["Quick Sort", "Merge Sort", "Insertion Sort", "Selection Sort", "Bubble Sort"],
+    Mountain: ["Merge Sort", "Quick Sort", "Insertion Sort", "Selection Sort", "Bubble Sort"],
+    "Nearly Sorted": ["Insertion Sort", "Quick Sort", "Merge Sort", "Bubble Sort", "Selection Sort"],
+    "Reverse Sorted": ["Merge Sort", "Quick Sort", "Selection Sort", "Insertion Sort", "Bubble Sort"],
+    "Few Unique": ["Merge Sort", "Quick Sort", "Insertion Sort", "Selection Sort", "Bubble Sort"],
+    Adversarial: ["Merge Sort", "Insertion Sort", "Selection Sort", "Bubble Sort", "Quick Sort"],
   };
-  const predicted = strongChoices[distributionType];
-  if (algoA === predicted) return algoA;
-  if (algoB === predicted) return algoB;
-  return COMPLEXITY[algoA] === "O(n log n)" ? algoA : algoB;
+
+  const reasons = {
+    Random: "Quick Sort usually performs strongly on average random data.",
+    Gaussian: "Gaussian data usually gives Quick Sort balanced partitions.",
+    Mountain: "Merge Sort handles structured patterns consistently.",
+    "Nearly Sorted": "Insertion Sort performs extremely well on nearly sorted data.",
+    "Reverse Sorted": "Reverse sorted data punishes quadratic algorithms heavily.",
+    "Few Unique": "Duplicate-heavy data favors consistent divide-and-conquer behavior.",
+    Adversarial: "This dataset intentionally attacks last-pivot Quick Sort behavior.",
+  };
+
+  const confidence = {
+    Random: 78,
+    Gaussian: 82,
+    Mountain: 85,
+    "Nearly Sorted": 94,
+    "Reverse Sorted": 95,
+    "Few Unique": 88,
+    Adversarial: 99,
+  };
+
+  const ranking = rankings[distributionType];
+  const winner = ranking.find((algorithm) => algorithm === algoA || algorithm === algoB);
+
+  return {
+    winner,
+    confidence: confidence[distributionType],
+    reason: reasons[distributionType],
+  };
 };
 
 const createDistributionArray = (type, size) => {
@@ -36,6 +61,7 @@ const createDistributionArray = (type, size) => {
       }
       return values;
     case "Reverse Sorted": return [...base].reverse();
+    case "Adversarial": return [...base];
     case "Few Unique":
       const u = [80, 160, 240, 320];
       return Array.from({ length: size }, () => u[Math.floor(Math.random() * u.length)]);
@@ -63,12 +89,13 @@ export default function ComparisonView({ styles }) {
   const [algoA, setAlgoA] = useState("Bubble Sort");
   const [algoB, setAlgoB] = useState("Merge Sort");
   const [winner, setWinner] = useState(null);
+  const [oracleResult, setOracleResult] = useState(null);
   const [hasStarted, setHasStarted] = useState(false);
 
   const left = useSortVisualizer(arraySize);
   const right = useSortVisualizer(arraySize);
   const isRunning = left.isSorting || right.isSorting;
-  const predictedWinner = getPrediction(algoA, algoB, distributionType);
+  const prediction = getPrediction(algoA, algoB, distributionType);
 
   const ALGORITHM_MAP = useMemo(() => ({
     "Bubble Sort": { left: left.runBubbleSort, right: right.runBubbleSort },
@@ -88,16 +115,23 @@ export default function ComparisonView({ styles }) {
 
   useEffect(() => {
     if (hasStarted && !left.isSorting && !right.isSorting) {
-      if (left.metrics.timeElapsed < right.metrics.timeElapsed) setWinner(algoA);
-      else if (right.metrics.timeElapsed < left.metrics.timeElapsed) setWinner(algoB);
-      else setWinner("Tie");
+      const actualWinner =
+        left.metrics.timeElapsed < right.metrics.timeElapsed
+          ? algoA
+          : right.metrics.timeElapsed < left.metrics.timeElapsed
+          ? algoB
+          : "Tie";
+
+      setWinner(actualWinner);
+      setOracleResult(actualWinner === prediction.winner);
       setHasStarted(false);
     }
-  }, [left.isSorting, right.isSorting, hasStarted]);
+  }, [left.isSorting, right.isSorting, hasStarted, prediction.winner]);
 
   const startComparison = async () => {
     if (isRunning || left.array.length === 0) return;
     setWinner(null);
+    setOracleResult(null);
     setHasStarted(true);
     ALGORITHM_MAP[algoA].left(speed);
     ALGORITHM_MAP[algoB].right(speed);
@@ -124,6 +158,7 @@ export default function ComparisonView({ styles }) {
             <option value="Random">Random</option>
             <option value="Nearly Sorted">Nearly Sorted</option>
             <option value="Reverse Sorted">Reverse Sorted</option>
+            <option value="Adversarial">Adversarial</option>
             <option value="Few Unique">Few Unique</option>
             <option value="Gaussian">Gaussian</option>
             <option value="Mountain">Mountain</option>
@@ -143,7 +178,20 @@ export default function ComparisonView({ styles }) {
       </section>
 
       <section style={compareStyles.oracle}>
-        🔮 Oracle Prediction: {predictedWinner} is likely to win on {distributionType} data.
+        <div>🔮 Prediction: {prediction.winner}</div>
+        <div style={compareStyles.oracleConfidence}>Confidence: {prediction.confidence}%</div>
+        <div style={compareStyles.oracleReason}>{prediction.reason}</div>
+        {oracleResult !== null && (
+          <div
+            style={{
+              marginTop: "10px",
+              color: oracleResult ? "#22c55e" : "#ef4444",
+              fontWeight: "800",
+            }}
+          >
+            {oracleResult ? "✅ Prediction Correct" : "❌ Prediction Failed"}
+          </div>
+        )}
       </section>
 
       <section style={compareStyles.grid}>
@@ -208,6 +256,7 @@ const compareStyles = {
   metrics: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginTop: "12px", color: "#d4d4d8", fontSize: "0.85rem" },
   winner: { background: "linear-gradient(to right, #8b5cf6, #ec4899)", color: "#fff", borderRadius: "18px", padding: "16px", textAlign: "center", fontWeight: "800", fontSize: "1.2rem" },
   winnerSubtext: { marginTop: "6px", fontSize: "0.9rem", fontWeight: "600", opacity: 0.9 },
-  oracle: { background: "#151522", border: "1px solid #ec4899", borderRadius: "18px", padding: "14px 18px", color: "#f8fafc", fontWeight: "700", textAlign: "center" }
+  oracle: { background: "#151522", border: "1px solid #ec4899", borderRadius: "18px", padding: "14px 18px", color: "#f8fafc", fontWeight: "700", textAlign: "center" },
+  oracleConfidence: { marginTop: "8px", color: "#22c55e", fontWeight: "800" },
+  oracleReason: { marginTop: "8px", fontSize: "0.9rem", opacity: 0.9 }
 };
-
