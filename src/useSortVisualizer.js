@@ -144,7 +144,7 @@ export function useSortVisualizer(size = 35) {
     onLineExecute?.(null);
   };
 
-  const runSelectionSort = async (speed = 30) => {
+  const runSelectionSort = async (speed = 30, onLineExecute) => {
     if (isSorting) return;
 
     setIsSorting(true);
@@ -157,20 +157,41 @@ export function useSortVisualizer(size = 35) {
     const startTime = performance.now();
 
     for (let i = 0; i < values.length; i++) {
+      if (isCancelled(currentToken)) {
+        setIsSorting(false);
+        onLineExecute?.(null);
+        return;
+      }
+
+      onLineExecute?.(0);
+      await sleep(speed * 0.35);
+
       let minIndex = i;
+
+      onLineExecute?.(1);
+      await sleep(speed * 0.35);
+
       colors[minIndex] = swapColor;
+      updateVisualizerState(values, colors, comparisons, operations, startTime);
 
       for (let j = i + 1; j < values.length; j++) {
         if (isCancelled(currentToken)) {
           setIsSorting(false);
+          onLineExecute?.(null);
           return;
         }
+
+        onLineExecute?.(2);
+        await sleep(speed * 0.35);
 
         comparisons++;
         colors[j] = compareColor;
         updateVisualizerState(values, colors, comparisons, operations, startTime);
 
         await sleep(speed);
+
+        onLineExecute?.(3);
+        await sleep(speed * 0.35);
 
         if (values[j] < values[minIndex]) {
           colors[minIndex] = defaultColor;
@@ -181,7 +202,13 @@ export function useSortVisualizer(size = 35) {
         }
       }
 
+      onLineExecute?.(4);
+      await sleep(speed * 0.35);
+
       if (minIndex !== i) {
+        onLineExecute?.(5);
+        await sleep(speed * 0.35);
+
         operations++;
         [values[i], values[minIndex]] = [values[minIndex], values[i]];
       }
@@ -192,6 +219,8 @@ export function useSortVisualizer(size = 35) {
     }
 
     setIsSorting(false);
+    await sleep(speed * 0.5);
+    onLineExecute?.(null);
   };
 
   const runInsertionSort = async (speed = 30) => {
