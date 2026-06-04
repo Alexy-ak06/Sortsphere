@@ -144,10 +144,10 @@ export default function App() {
             <BrainCircuit size={46} strokeWidth={2.3} />
           </div>
         </div>
-       <h1 style={styles.heroTitle}>
-  Sort
+      <h1 style={styles.heroTitle}>
+  SortSphere
   <span style={styles.heroTitleAccent}>
-    SphereX
+    X
   </span>
 </h1>
         <div style={styles.heroLine}>

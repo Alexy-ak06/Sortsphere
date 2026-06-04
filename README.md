@@ -1,16 +1,58 @@
-# React + Vite
+# SortSphereX
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interactive Sorting, Searching & Graph Algorithm Visualization Laboratory
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Interactive Sorting Visualizer
+  - Bubble Sort
+  - Selection Sort
+  - Insertion Sort
+  - Merge Sort
+  - Quick Sort
 
-## React Compiler
+- Searching Algorithms
+  - Linear Search
+  - Binary Search
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Graph Algorithms
+  - BFS
+  - DFS
+  - Dijkstra's Algorithm
+  - A* Pathfinding
 
-## Expanding the ESLint configuration
+- Compare Mode
+  - Run algorithms side-by-side
+  - Performance comparison
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Arena Mode
+  - Competitive algorithm challenges
+  - Real-time execution tracking
+
+- Challenge Mode
+  - Solve algorithm tasks
+  - Test understanding interactively
+
+- Execution Tracer
+  - Line-by-line algorithm visualization
+
+- Performance Metrics
+  - Comparisons
+  - Operations
+  - Execution Time
+  - Time Complexity
+
+## Tech Stack
+
+- React
+- JavaScript
+- Vite
+- CSS
+
+## Live Demo
+
+[Add your Vercel URL here]
+
+## Author
+
+Ayush Kumar Mahapatra
