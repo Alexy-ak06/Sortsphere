@@ -42,6 +42,24 @@ Interactive Sorting, Searching & Graph Algorithm Visualization Laboratory
   - Execution Time
   - Time Complexity
 
+## Screenshots
+
+### Home Dashboard
+
+![Home Dashboard](public/assets/SortSphereX%20Home%20Dashboard.png)
+
+### Graph Visualizer
+
+![Graph Visualizer](public/assets/sortspherex-graph-visualizer.png)
+
+### Compare Mode
+
+![Compare Mode](public/assets/sortspherex-compare-mode.png)
+
+### Arena Mode
+
+![Arena Mode](public/assets/sortspherex-arena-mode.png)
+
 ## Tech Stack
 
 - React
