@@ -47,6 +47,8 @@ export default function ArenaView({ styles }) {
   const [distributionType, setDistributionType] = useState("Random");
   const [ranking, setRanking] = useState([]);
   const [history, setHistory] = useState({});
+  const [challengePick, setChallengePick] = useState("");
+  const [challengeResult, setChallengeResult] = useState(null);
 
   const bubble = useSortVisualizer(arraySize);
   const selection = useSortVisualizer(arraySize);
@@ -69,6 +71,7 @@ export default function ArenaView({ styles }) {
     engines.forEach((e) => e.engine.loadArray([...source]));
     setRanking([]);
     setHistory({});
+    setChallengeResult(null);
   };
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export default function ArenaView({ styles }) {
   const startArena = async () => {
     if (isRunning) return;
     setRanking([]);
+    setChallengeResult(null);
     const startTime = performance.now();
 
     const results = await Promise.all(
@@ -85,7 +89,7 @@ export default function ArenaView({ styles }) {
         await e.run(speed, null, (point) => {
           setHistory((previous) => ({
             ...previous,
-            [e.name]: [...(previous[e.name] || []), point].slice(-60),
+            [e.name]: [...(previous[e.name] || []), point].slice(-100),
           }));
         });
 
@@ -100,21 +104,34 @@ export default function ArenaView({ styles }) {
 
     const finalRanking = results.sort((a, b) => a.time - b.time);
     setRanking(finalRanking);
+
+    if (challengePick) {
+      const winner = finalRanking[0].name;
+      setChallengeResult({
+        winner,
+        correct: challengePick === winner,
+      });
+    }
   };
 
-  const renderGrowthGraph = (algorithmName) => {
+  const renderMetricGraph = (algorithmName, metric, color, label) => {
     const points = history[algorithmName] || [];
-    if (points.length < 2) return <div style={arenaStyles.graphPlaceholder}>Growth graph waiting...</div>;
-    const maxComparisons = Math.max(...points.map((p) => p.comparisons), 1);
+    if (points.length < 2) {
+      return <div style={arenaStyles.graphPlaceholder}>{label} waiting...</div>;
+    }
+    const maxValue = Math.max(...points.map((p) => p[metric] || 0), 1);
     const path = points.map((p, i) => {
       const x = (i / (points.length - 1)) * 100;
-      const y = 100 - (p.comparisons / maxComparisons) * 100;
+      const y = 100 - ((p[metric] || 0) / maxValue) * 100;
       return `${i === 0 ? "M" : "L"} ${x} ${y}`;
     }).join(" ");
     return (
-      <svg viewBox="0 0 100 100" style={arenaStyles.growthGraph} preserveAspectRatio="none">
-        <path d={path} fill="none" stroke="#22c55e" strokeWidth="3" />
-      </svg>
+      <div style={arenaStyles.graphBox}>
+        <span style={arenaStyles.graphLabel}>{label}</span>
+        <svg viewBox="0 0 100 100" style={arenaStyles.growthGraph} preserveAspectRatio="none">
+          <path d={path} fill="none" stroke={color} strokeWidth="3" />
+        </svg>
+      </div>
     );
   };
 
@@ -142,6 +159,43 @@ export default function ArenaView({ styles }) {
       <section style={arenaStyles.datasetInfo}>
         <h3 style={{ margin: "0 0 6px 0" }}>{distributionType}</h3>
         <p style={{ margin: 0 }}>{DATASET_EXPLANATIONS[distributionType]}</p>
+      </section>
+
+      <section style={arenaStyles.challengeBox}>
+        <div>
+          <h3 style={{ margin: "0 0 6px 0" }}>🎯 Algorithm Challenge Mode</h3>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: "0.85rem" }}>
+            Predict which algorithm will win before starting the arena.
+          </p>
+        </div>
+
+        <select
+          value={challengePick}
+          disabled={isRunning}
+          onChange={(e) => setChallengePick(e.target.value)}
+          style={styles.select}
+        >
+          <option value="">Choose winner</option>
+          {engines.map((e) => (
+            <option key={e.name} value={e.name}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+
+        {challengeResult && (
+          <div
+            style={{
+              ...arenaStyles.challengeResult,
+              borderColor: challengeResult.correct ? "#22c55e" : "#ef4444",
+              color: challengeResult.correct ? "#22c55e" : "#ef4444",
+            }}
+          >
+            {challengeResult.correct
+              ? `Correct! ${challengeResult.winner} won.`
+              : `Wrong! ${challengeResult.winner} won.`}
+          </div>
+        )}
       </section>
 
       {ranking.length > 0 && ranking[0].time > 0 && (
@@ -202,7 +256,11 @@ export default function ArenaView({ styles }) {
               <div style={arenaStyles.progressTrack}>
                 <div style={{ ...arenaStyles.progressBar, width: `${Math.min(100, (e.engine.metrics.comparisons / (arraySize * arraySize)) * 100)}%` }} />
               </div>
-              {renderGrowthGraph(e.name)}
+              <div style={arenaStyles.graphStack}>
+                {renderMetricGraph(e.name, "comparisons", "#22c55e", "Comparisons")}
+                {renderMetricGraph(e.name, "swaps", "#f97316", "Operations")}
+                {renderMetricGraph(e.name, "timeElapsed", "#ec4899", "Runtime")}
+              </div>
               <div style={arenaStyles.stage}>
                 {e.engine.array.map((val, idx) => (
                   <div key={idx} style={{
@@ -242,6 +300,9 @@ const arenaStyles = {
   statsTable: { background: "#151522", border: "1px solid #2a2540", borderRadius: "18px", padding: "20px" },
   statsTitle: { color: "#f8fafc", marginBottom: "16px", textAlign: "center" },
   table: { width: "100%", borderCollapse: "collapse", color: "#f8fafc", textAlign: "center" },
+  graphStack: { display: "grid", gap: "8px", marginBottom: "10px" },
+  graphBox: { background: "#020617", border: "1px solid #1e293b", borderRadius: "10px", padding: "8px" },
+  graphLabel: { display: "block", color: "#94a3b8", fontSize: "0.68rem", fontWeight: "700", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.05em" },
   grid: { display: "grid", gridTemplateColumns: "repeat(5, minmax(180px, 1fr))", gap: "16px" },
   card: { background: "#151522", border: "1px solid #2a2540", borderRadius: "18px", padding: "14px" },
   title: { color: "#f8fafc", fontSize: "0.95rem", margin: "0 0 10px 0", textAlign: "center" },
@@ -249,6 +310,8 @@ const arenaStyles = {
   metrics: { display: "grid", gap: "6px", marginTop: "10px", color: "#d4d4d8", fontSize: "0.78rem", textAlign: "center" },
   progressTrack: { height: "8px", background: "#1f2937", borderRadius: "999px", overflow: "hidden", marginBottom: "10px" },
   progressBar: { height: "100%", background: "#22c55e" },
-  growthGraph: { width: "100%", height: "80px", background: "#020617", borderRadius: "10px", marginBottom: "10px", padding: "6px" },
-  graphPlaceholder: { height: "80px", background: "#020617", borderRadius: "10px", marginBottom: "10px", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem" }
+  growthGraph: { width: "100%", height: "40px" },
+  graphPlaceholder: { height: "40px", background: "#020617", borderRadius: "10px", marginBottom: "10px", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem" },
+  challengeBox: { background: "#151522", border: "1px solid #2a2540", borderRadius: "18px", padding: "16px", display: "grid", gridTemplateColumns: "1fr 240px auto", gap: "16px", alignItems: "center" },
+  challengeResult: { border: "1px solid", borderRadius: "12px", padding: "12px 14px", fontWeight: "800", whiteSpace: "nowrap" }
 };

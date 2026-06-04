@@ -1,9 +1,10 @@
 import ArenaView from "./ArenaView";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSortVisualizer } from "./useSortVisualizer";
 import { useSearchVisualizer } from "./useSearchVisualizer";
 import { useGraphVisualizer } from "./useGraphVisualizer";
 import ComparisonView from "./ComparisonView";
+import { BrainCircuit } from "lucide-react";
 
 export default function App() {
   const [mode, setMode] = useState("Sorting");
@@ -79,43 +80,82 @@ export default function App() {
     [graphVisualizer.runBFS, graphVisualizer.runDFS, graphVisualizer.runDijkstra, graphVisualizer.runAStar]
   );
 
+  const activeAlgorithm = useMemo(() => {
+    if (isSortingMode) return sortingRegistry[selectedSortAlgorithm];
+    if (isSearchingMode) return searchingRegistry[selectedSearchAlgorithm];
+    return graphRegistry[selectedGraphAlgorithm];
+  }, [mode, selectedSortAlgorithm, selectedSearchAlgorithm, selectedGraphAlgorithm, sortingRegistry, searchingRegistry, graphRegistry]);
+
   const activeArray = isSortingMode ? sortVisualizer.array : searchVisualizer.array;
   const activeColors = isSortingMode ? sortVisualizer.barColors : searchVisualizer.barColors;
   const activeMetrics = isSortingMode ? sortVisualizer.metrics : isSearchingMode ? searchVisualizer.metrics : graphVisualizer.metrics;
   const isRunning = isSortingMode ? sortVisualizer.isSorting : isSearchingMode ? searchVisualizer.isSearching : graphVisualizer.isTraversing;
-  const activeAlgorithm = isSortingMode ? sortingRegistry[selectedSortAlgorithm] : isSearchingMode ? searchingRegistry[selectedSearchAlgorithm] : graphRegistry[selectedGraphAlgorithm];
 
-  useEffect(() => {
+  const handleGenerate = useCallback(() => {
     if (isSortingMode) sortVisualizer.generateNewArray(distributionType);
     else if (isSearchingMode) searchVisualizer.generateNewArray(selectedSearchAlgorithm === "Binary Search");
     else graphVisualizer.resetGraph();
     setCurrentExecutingLine(null);
-  }, [arraySize, mode, selectedSearchAlgorithm, sortVisualizer.generateNewArray, searchVisualizer.generateNewArray, graphVisualizer.resetGraph]);
+  }, [isSortingMode, isSearchingMode, distributionType, selectedSearchAlgorithm, sortVisualizer, searchVisualizer, graphVisualizer]);
 
-  const handleGenerate = () => {
-    if (isSortingMode) sortVisualizer.generateNewArray(distributionType);
-    else if (isSearchingMode) searchVisualizer.generateNewArray(selectedSearchAlgorithm === "Binary Search");
-    else graphVisualizer.resetGraph();
-    setCurrentExecutingLine(null);
-  };
-
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     if (isRunning) return;
     try {
       if (isSortingMode) await activeAlgorithm.action(speed, setCurrentExecutingLine);
       else if (isSearchingMode) await activeAlgorithm.action(Number(targetValue), speed, setCurrentExecutingLine);
       else await activeAlgorithm.action("A", speed * 4, setCurrentExecutingLine);
     } finally { setCurrentExecutingLine(null); }
-  };
+  }, [isRunning, isSortingMode, isSearchingMode, activeAlgorithm, speed, targetValue]);
+
+  useEffect(() => {
+    if (isSortingMode) sortVisualizer.generateNewArray(distributionType);
+    else if (isSearchingMode) searchVisualizer.generateNewArray(selectedSearchAlgorithm === "Binary Search");
+    else graphVisualizer.resetGraph();
+    setCurrentExecutingLine(null);
+  }, [arraySize, mode, selectedSearchAlgorithm]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea") return;
+      if (isRunning) return;
+      if (e.key === "Enter") handleStart();
+      if (e.key === " ") { e.preventDefault(); handleGenerate(); }
+      if (e.key.toLowerCase() === "r") handleGenerate();
+      if (e.key === "1") setMode("Sorting");
+      if (e.key === "2") setMode("Searching");
+      if (e.key === "3") setMode("Graphs");
+      if (e.key === "4") setMode("Compare");
+      if (e.key === "5") setMode("Arena");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isRunning, handleStart, handleGenerate]);
 
   const graphPositions = { A: { x: 400, y: 80 }, B: { x: 250, y: 190 }, C: { x: 580, y: 190 }, D: { x: 170, y: 340 }, E: { x: 400, y: 340 }, F: { x: 650, y: 340 } };
   const graphEdges = Object.entries(graphVisualizer.graph).flatMap(([from, edges]) => edges.map(({ node, weight }) => [from, node, weight]));
 
   return (
     <div style={styles.dashboardContainer}>
-      <header style={styles.header}>
-        <h1 style={styles.logo}>🌌 SortSphere <span style={styles.badge}>v2.0 DSA Lab</span></h1>
-        <p style={styles.subtitle}>Interactive Sorting, Searching and Graph Algorithm Visualization Laboratory</p>
+      <header style={styles.heroHeader}>
+        <div style={styles.heroGlow} />
+        <div style={styles.heroLogoMark}>
+          <div style={styles.heroLogoInner}>
+            <BrainCircuit size={46} strokeWidth={2.3} />
+          </div>
+        </div>
+       <h1 style={styles.heroTitle}>
+  Sort
+  <span style={styles.heroTitleAccent}>
+    SphereX
+  </span>
+</h1>
+        <div style={styles.heroLine}>
+          <span style={styles.heroDivider} />
+          <p style={styles.heroSubtitle}>Interactive Sorting, Searching & Graph Algorithm Visualization Laboratory</p>
+          <span style={styles.heroDivider} />
+        </div>
+        <div style={styles.heroBadge}><span>🧪</span><strong>v2.0 DSA LAB</strong></div>
       </header>
 
       <section style={styles.modePanel}>
@@ -123,6 +163,8 @@ export default function App() {
           <button key={m} onClick={() => setMode(m)} disabled={isRunning} style={{ ...styles.modeButton, ...(mode === m ? styles.modeButtonActive : {}) }}>{m}</button>
         ))}
       </section>
+      
+      <div style={styles.shortcutHint}>Enter = Start · Space/R = Generate/Reset · 1 Sorting · 2 Searching · 3 Graphs · 4 Compare · 5 Arena</div>
 
       {isCompareMode ? <ComparisonView styles={styles} /> : (
         <>
@@ -156,57 +198,25 @@ export default function App() {
                             const fromPosition = graphPositions[from];
                             const toPosition = graphPositions[to];
                             const isActiveEdge = graphVisualizer.activeEdge && graphVisualizer.activeEdge[0] === from && graphVisualizer.activeEdge[1] === to;
-                            
                             return (
                               <g key={`${from}-${to}`}>
-                                <line
-                                  x1={fromPosition.x + (toPosition.x - fromPosition.x) * 0.08}
-                                  y1={fromPosition.y + (toPosition.y - fromPosition.y) * 0.08}
-                                  x2={toPosition.x - (toPosition.x - fromPosition.x) * 0.08}
-                                  y2={toPosition.y - (toPosition.y - fromPosition.y) * 0.08}
-                                  stroke={isActiveEdge ? "#22c55e" : "#6d5dfc"}
-                                  strokeWidth={isActiveEdge ? "6" : "3"}
-                                  strokeLinecap="round"
-                                  opacity={isActiveEdge ? "1" : "0.35"}
-                                  filter={isActiveEdge ? "url(#edgeGlow)" : "none"}
-                                />
+                                <line x1={fromPosition.x + (toPosition.x - fromPosition.x) * 0.08} y1={fromPosition.y + (toPosition.y - fromPosition.y) * 0.08} x2={toPosition.x - (toPosition.x - fromPosition.x) * 0.08} y2={toPosition.y - (toPosition.y - fromPosition.y) * 0.08} stroke={isActiveEdge ? "#22c55e" : "#6d5dfc"} strokeWidth={isActiveEdge ? "6" : "3"} strokeLinecap="round" opacity={isActiveEdge ? "1" : "0.35"} filter={isActiveEdge ? "url(#edgeGlow)" : "none"} />
                                 <text x={(fromPosition.x + toPosition.x) / 2} y={(fromPosition.y + toPosition.y) / 2 - 28} fill="#f8fafc" fontSize="13" fontWeight="700" textAnchor="middle">w:{weight}</text>
                               </g>
                             );
                           })}
-                          {(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") &&
-                            graphVisualizer.shortestPath.length > 1 &&
-                            graphVisualizer.shortestPath.slice(0, -1).map((from, index) => {
-                              const to = graphVisualizer.shortestPath[index + 1];
-                              const fromPosition = graphPositions[from];
-                              const toPosition = graphPositions[to];
-                              if (!fromPosition || !toPosition) return null;
-                              return (
-                                <g key={`shortest-overlay-${from}-${to}`}>
-                                  <line
-                                    x1={fromPosition.x}
-                                    y1={fromPosition.y}
-                                    x2={toPosition.x}
-                                    y2={toPosition.y}
-                                    stroke="#facc15"
-                                    strokeWidth="22"
-                                    strokeLinecap="round"
-                                    opacity="0.35"
-                                  />
-                                  <line
-                                    x1={fromPosition.x}
-                                    y1={fromPosition.y}
-                                    x2={toPosition.x}
-                                    y2={toPosition.y}
-                                    stroke="#ffffff"
-                                    strokeWidth="8"
-                                    strokeLinecap="round"
-                                    opacity="1"
-                                    filter="url(#edgeGlow)"
-                                  />
-                                </g>
-                              );
-                            })}
+                          {(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") && graphVisualizer.shortestPath.length > 1 && graphVisualizer.shortestPath.slice(0, -1).map((from, index) => {
+                            const to = graphVisualizer.shortestPath[index + 1];
+                            const fromPosition = graphPositions[from];
+                            const toPosition = graphPositions[to];
+                            if (!fromPosition || !toPosition) return null;
+                            return (
+                              <g key={`shortest-overlay-${from}-${to}`}>
+                                <line x1={fromPosition.x} y1={fromPosition.y} x2={toPosition.x} y2={toPosition.y} stroke="#facc15" strokeWidth="22" strokeLinecap="round" opacity="0.35" />
+                                <line x1={fromPosition.x} y1={fromPosition.y} x2={toPosition.x} y2={toPosition.y} stroke="#ffffff" strokeWidth="8" strokeLinecap="round" opacity="1" filter="url(#edgeGlow)" />
+                              </g>
+                            );
+                          })}
                         </svg>
                         {Object.keys(graphVisualizer.graph).map((node) => {
                           const isPathNode = graphVisualizer.shortestPath.includes(node);
@@ -225,27 +235,10 @@ export default function App() {
                     </div>
                   ) : (
                     activeArray.map((value, idx) => (
-                      <div
-                        key={idx}
-                        title={`${value}`}
-                        style={{
-                          width: `${Math.max(8, 620 / activeArray.length)}px`,
-                          height: "380px",
-transform: `scaleY(${value / 380})`,
-transformOrigin: "bottom",
-transition: "transform 0.08s linear",
-willChange: "transform",
-                          backgroundColor: activeColors[idx],
-                          boxShadow: `0 0 6px ${activeColors[idx]}`,
-                          margin: "0 3px",
-                          borderRadius: "6px 6px 0 0",
-                          alignSelf: "flex-end"
-                        }}
-                      />
+                      <div key={idx} title={`${value}`} style={{ width: `${Math.max(8, 620 / activeArray.length)}px`, height: "380px", transform: `scaleY(${value / 380})`, transformOrigin: "bottom", transition: "transform 0.08s linear", willChange: "transform", backgroundColor: activeColors[idx], boxShadow: `0 0 6px ${activeColors[idx]}`, margin: "0 3px", borderRadius: "6px 6px 0 0", alignSelf: "flex-end" }} />
                     ))
                   )}
                 </main>
-
                 <aside style={styles.codeTracer}>
                   <h3 style={styles.tracerTitle}>Execution Tracer</h3>
                   <div style={styles.codeBlock}>
@@ -327,24 +320,48 @@ willChange: "transform",
           </section>
         </>
       )}
+
+      <footer style={styles.footer}>
+        <strong>Built by Ayush Kumar Mahapatra</strong>
+        <span>SortSphere v2.0</span>
+        <span>Interactive Algorithm Visualization Platform</span>
+      </footer>
     </div>
   );
 }
 
 const styles = {
-  graphStageWrapper: { width: "100%", height: "100%", display: "flex", flexDirection: "column" },
-  graphCanvas: { position: "relative", width: "100%", height: "460px", minWidth: "760px", maxWidth: "900px", alignSelf: "center", marginBottom: "20px", overflow: "visible" },
-  graphStats: { display: "flex", gap: "20px", marginBottom: "15px", padding: "10px", background: "#1f2030", borderRadius: "10px", color: "#a1a1aa", fontSize: "0.85rem", justifyContent: "center" },
-  graphPathPanel: { marginTop: "16px", padding: "16px", borderRadius: "16px", background: "#151522", border: "1px solid #2a2540" },
-  graphPathContent: { color: "#22c55e", fontWeight: "700", fontSize: "0.9rem", wordBreak: "break-word" },
-  dashboardContainer: { minHeight: "100vh", backgroundColor: "#05050a", color: "#f8fafc", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', system-ui, sans-serif", padding: "20px" },
-  header: { textAlign: "center", marginBottom: "18px" },
-  logo: { fontSize: "2.6rem", fontWeight: "800", letterSpacing: "-0.05em", background: "linear-gradient(to right, #8b5cf6, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", margin: "0 0 8px 0" },
-  badge: { fontSize: "0.85rem", fontWeight: "500", color: "#ec4899", border: "1px solid #ec4899", padding: "2px 8px", borderRadius: "20px", verticalAlign: "middle", marginLeft: "10px" },
-  subtitle: { color: "#a1a1aa", fontSize: "1rem", margin: 0 },
+  dashboardContainer: { minHeight: "100vh", backgroundColor: "#05050a", color: "#f8fafc", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', system-ui, sans-serif", padding: "20px", overflowX: "hidden" },
+  heroHeader: { position: "relative", textAlign: "center", marginBottom: "34px", paddingTop: "10px", width: "100%", maxWidth: "1400px", overflow: "visible" },
+  heroGlow: { position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)", width: "520px", height: "220px", background: "radial-gradient(circle, rgba(139,92,246,0.35), rgba(236,72,153,0.12), transparent 70%)", filter: "blur(18px)", pointerEvents: "none", zIndex: 0 },
+  heroLogoMark: { position: "relative", zIndex: 1, width: "92px", height: "92px", margin: "0 auto 14px auto", borderRadius: "26px", background: "linear-gradient(135deg, #8b5cf6, #ec4899, #22d3ee)", padding: "3px", boxShadow: "0 0 35px rgba(139,92,246,0.75), 0 0 70px rgba(34,211,238,0.25)" },
+  heroLogoInner: { width: "100%", height: "100%", borderRadius: "23px", background: "linear-gradient(145deg, #111827, #020617)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", textShadow: "0 0 18px rgba(255,255,255,0.65)" },
+   heroTitle: {
+  position: "relative",
+  zIndex: 1,
+  margin: 0,
+  fontSize: "clamp(3.4rem, 7vw, 4.5rem)",
+  fontWeight: "800",
+  lineHeight: 1.1,
+  letterSpacing: "-0.03em",
+  color: "#ffffff",
+  textShadow: "0 0 30px rgba(255,255,255,0.18)"
+},
+heroTitleAccent: {
+  background: "linear-gradient(90deg, #ec4899, #8b5cf6, #22d3ee)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  display: "inline-block",
+  marginRight: "20px",
+},
+  heroLine: { position: "relative", zIndex: 1, marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "18px" },
+  heroDivider: { width: "90px", height: "1px", background: "linear-gradient(90deg, transparent, #8b5cf6, transparent)", boxShadow: "0 0 12px rgba(139,92,246,0.8)" },
+  heroSubtitle: { margin: 0, color: "#cbd5e1", fontSize: "clamp(0.65rem, 1.2vw, 0.92rem)", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase" },
+  heroBadge: { position: "relative", zIndex: 1, display: "inline-flex", alignItems: "center", gap: "10px", marginTop: "18px", padding: "9px 22px", borderRadius: "999px", border: "1px solid rgba(236,72,153,0.85)", color: "#f8fafc", background: "linear-gradient(90deg, rgba(139,92,246,0.18), rgba(236,72,153,0.16), rgba(34,211,238,0.14))", boxShadow: "0 0 24px rgba(236,72,153,0.35), inset 0 0 18px rgba(255,255,255,0.05)", fontSize: "0.85rem", letterSpacing: "0.08em" },
   modePanel: { display: "flex", gap: "10px", background: "#151522", border: "1px solid #2a2540", borderRadius: "999px", padding: "8px", marginBottom: "16px" },
   modeButton: { padding: "10px 24px", borderRadius: "999px", border: "none", cursor: "pointer", background: "transparent", color: "#a1a1aa", fontWeight: "700", transition: "all 0.2s ease" },
   modeButtonActive: { background: "linear-gradient(to right, #8b5cf6, #ec4899)", color: "#ffffff", boxShadow: "0 4px 18px rgba(236, 72, 153, 0.25)" },
+  shortcutHint: { color: "#94a3b8", fontSize: "0.75rem", marginBottom: "16px", letterSpacing: "0.04em", textAlign: "center" },
   hudPanel: { display: "flex", gap: "16px", width: "100%", maxWidth: "980px", marginBottom: "18px" },
   metricCard: { flex: 1, background: "#151522", border: "1px solid #2a2540", padding: "12px 16px", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "4px" },
   metricLabel: { fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#a1a1aa" },
@@ -376,7 +393,13 @@ const styles = {
   btn: { padding: "14px 22px", fontSize: "0.9rem", fontWeight: "600", borderRadius: "10px", border: "none", cursor: "pointer", transition: "all 0.2s ease", whiteSpace: "nowrap" },
   btnPrimary: { backgroundColor: "#8b5cf6", color: "#ffffff", boxShadow: "0 4px 18px rgba(139, 92, 246, 0.45)" },
   btnSecondary: { backgroundColor: "#1f2030", color: "#d4d4d8", border: "1px solid #3f3f56" },
-  graphSvg: { position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" },
-  positionedGraphNode: { position: "absolute", transform: "translate(-50%, -50%)" },
-  graphNode: { width: "72px", height: "72px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontWeight: "800", fontSize: "1.8rem", border: "2px solid rgba(255,255,255,0.2)", transition: "all 0.25s ease" },
+  footer: { marginTop: "28px", padding: "18px", color: "#94a3b8", fontSize: "0.82rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", borderTop: "1px solid #1f2030", width: "100%", maxWidth: "980px" },
+  graphStageWrapper: { width: "100%", height: "100%", display: "flex", flexDirection: "column" },
+  graphCanvas: { position: "relative", width: "100%", height: "460px", flex: 1 },
+  graphSvg: { width: "100%", height: "100%" },
+  positionedGraphNode: { position: "absolute", zIndex: 2 },
+  graphNode: { width: "45px", height: "45px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontSize: "1rem", fontWeight: "bold" },
+  graphStats: { display: "flex", gap: "20px", marginBottom: "10px", fontSize: "0.8rem", color: "#94a3b8" },
+  graphPathPanel: { marginTop: "15px", background: "#151522", padding: "12px", borderRadius: "12px", border: "1px solid #2a2540" },
+  graphPathContent: { fontSize: "0.9rem", color: "#f8fafc", fontWeight: "600", letterSpacing: "0.02em" }
 };
