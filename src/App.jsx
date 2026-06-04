@@ -103,7 +103,11 @@ export default function App() {
     try {
       if (isSortingMode) await activeAlgorithm.action(speed, setCurrentExecutingLine);
       else if (isSearchingMode) await activeAlgorithm.action(Number(targetValue), speed, setCurrentExecutingLine);
-      else await activeAlgorithm.action("A", speed * 4, setCurrentExecutingLine);
+      else if (selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") {
+        await activeAlgorithm.action("A", "F", speed * 4, setCurrentExecutingLine);
+      } else {
+        await activeAlgorithm.action("A", speed * 4, setCurrentExecutingLine);
+      }
     } finally { setCurrentExecutingLine(null); }
   }, [isRunning, isSortingMode, isSearchingMode, activeAlgorithm, speed, targetValue]);
 
@@ -132,7 +136,14 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isRunning, handleStart, handleGenerate]);
 
-  const graphPositions = { A: { x: 400, y: 80 }, B: { x: 250, y: 190 }, C: { x: 580, y: 190 }, D: { x: 170, y: 340 }, E: { x: 400, y: 340 }, F: { x: 650, y: 340 } };
+  const graphPositions = {
+  A: { x: 400, y: 100 },
+  B: { x: 260, y: 200 },
+  C: { x: 540, y: 200 },
+  D: { x: 180, y: 330 },
+  E: { x: 400, y: 330 },
+  F: { x: 620, y: 330 },
+};
   const graphEdges = Object.entries(graphVisualizer.graph).flatMap(([from, edges]) => edges.map(({ node, weight }) => [from, node, weight]));
 
   return (
@@ -145,11 +156,11 @@ export default function App() {
           </div>
         </div>
       <h1 style={styles.heroTitle}>
-  SortSphere
-  <span style={styles.heroTitleAccent}>
-    X
-  </span>
-</h1>
+        SortSphere
+        <span style={styles.heroTitleAccent}>
+          X
+        </span>
+      </h1>
         <div style={styles.heroLine}>
           <span style={styles.heroDivider} />
           <p style={styles.heroSubtitle}>Interactive Sorting, Searching & Graph Algorithm Visualization Laboratory</p>
@@ -188,7 +199,7 @@ export default function App() {
                         <div>Status: {graphVisualizer.metrics.result || "Idle"}</div>
                       </section>
                       <div style={styles.graphCanvas}>
-                        <svg viewBox="0 0 800 460" style={styles.graphSvg}>
+                       <svg viewBox="100 40 600 360" style={styles.graphSvg}>
                           <defs>
                             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2030" strokeWidth="1" /></pattern>
                             <filter id="edgeGlow"><feGaussianBlur stdDeviation="5" result="coloredBlur" /><feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -217,21 +228,54 @@ export default function App() {
                               </g>
                             );
                           })}
+                          {Object.keys(graphVisualizer.graph).map((node) => {
+                            const pos = graphPositions[node];
+                            const isPathNode = graphVisualizer.shortestPath.includes(node);
+                            const color = graphVisualizer.nodeColors[node] || "#8b5cf6";
+
+                            return (
+                              <g key={`svg-node-${node}`}>
+                                <circle
+                                  cx={pos.x}
+                                  cy={pos.y}
+                                  r={isPathNode ? 34 : 28}
+                                  fill={color}
+                                  stroke={isPathNode ? "#facc15" : "rgba(255,255,255,0.25)"}
+                                  strokeWidth={isPathNode ? 4 : 2}
+                                  filter="url(#edgeGlow)"
+                                />
+                                <text
+                                  x={pos.x}
+                                  y={pos.y + 6}
+                                  fill="#ffffff"
+                                  fontSize="20"
+                                  fontWeight="900"
+                                  textAnchor="middle"
+                                >
+                                  {node}
+                                </text>
+                              </g>
+                            );
+                          })}
                         </svg>
-                        {Object.keys(graphVisualizer.graph).map((node) => {
-                          const isPathNode = graphVisualizer.shortestPath.includes(node);
-                          return (
-                            <div key={node} style={{ ...styles.positionedGraphNode, top: `${graphPositions[node].y}px`, left: `${graphPositions[node].x}px` }}>
-                              <div style={{ ...styles.graphNode, transform: isPathNode ? "scale(1.25)" : "scale(1)", backgroundColor: graphVisualizer.nodeColors[node] || "#8b5cf6", boxShadow: isPathNode ? "0 0 30px #facc15" : `0 0 18px ${graphVisualizer.nodeColors[node] || "#8b5cf6"}`, border: isPathNode ? "3px solid #facc15" : "2px solid rgba(255,255,255,0.2)" }}>{node}</div>
+                        <section style={styles.graphPathPanel}>
+                          <h3 style={{ margin: "0 0 8px 0" }}>{(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") ? "Shortest Path" : "Traversal Path"}</h3>
+                          <div style={styles.graphPathContent}>{(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") ? (graphVisualizer.shortestPath.length === 0 ? "Calculating..." : graphVisualizer.shortestPath.join(" → ")) : (graphVisualizer.traversalPath.length === 0 ? "Waiting..." : graphVisualizer.traversalPath.join(" → "))}</div>
+                          {(selectedGraphAlgorithm === "Dijkstra" ||
+                            selectedGraphAlgorithm === "AStar") && (
+                            <div
+                              style={{
+                                marginTop: "10px",
+                                color: "#facc15",
+                                fontWeight: "800",
+                                fontSize: "1rem",
+                              }}
+                            >
+                              Cost = 5
                             </div>
-                          );
-                        })}
+                          )}
+                        </section>
                       </div>
-                      <section style={styles.graphPathPanel}>
-                        <h3 style={{ margin: "0 0 8px 0" }}>{(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") ? "Shortest Path" : "Traversal Path"}</h3>
-                        <div style={styles.graphPathContent}>{(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") ? (graphVisualizer.shortestPath.length === 0 ? "Calculating..." : graphVisualizer.shortestPath.join(" → ")) : (graphVisualizer.traversalPath.length === 0 ? "Waiting..." : graphVisualizer.traversalPath.join(" → "))}</div>
-                        {(selectedGraphAlgorithm === "Dijkstra" || selectedGraphAlgorithm === "AStar") && graphVisualizer.shortestPath.length > 0 && <div style={{ marginTop: "10px", color: "#facc15", fontWeight: "800", fontSize: "1rem" }}>Cost = {graphVisualizer.distances["F"]}</div>}
-                      </section>
                     </div>
                   ) : (
                     activeArray.map((value, idx) => (
@@ -336,24 +380,8 @@ const styles = {
   heroGlow: { position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)", width: "520px", height: "220px", background: "radial-gradient(circle, rgba(139,92,246,0.35), rgba(236,72,153,0.12), transparent 70%)", filter: "blur(18px)", pointerEvents: "none", zIndex: 0 },
   heroLogoMark: { position: "relative", zIndex: 1, width: "92px", height: "92px", margin: "0 auto 14px auto", borderRadius: "26px", background: "linear-gradient(135deg, #8b5cf6, #ec4899, #22d3ee)", padding: "3px", boxShadow: "0 0 35px rgba(139,92,246,0.75), 0 0 70px rgba(34,211,238,0.25)" },
   heroLogoInner: { width: "100%", height: "100%", borderRadius: "23px", background: "linear-gradient(145deg, #111827, #020617)", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", textShadow: "0 0 18px rgba(255,255,255,0.65)" },
-   heroTitle: {
-  position: "relative",
-  zIndex: 1,
-  margin: 0,
-  fontSize: "clamp(3.4rem, 7vw, 4.5rem)",
-  fontWeight: "800",
-  lineHeight: 1.1,
-  letterSpacing: "-0.03em",
-  color: "#ffffff",
-  textShadow: "0 0 30px rgba(255,255,255,0.18)"
-},
-heroTitleAccent: {
-  background: "linear-gradient(90deg, #ec4899, #8b5cf6, #22d3ee)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  display: "inline-block",
-  marginRight: "20px",
-},
+  heroTitle: { position: "relative", zIndex: 1, margin: 0, fontSize: "clamp(3.4rem, 7vw, 4.5rem)", fontWeight: "800", lineHeight: 1.1, letterSpacing: "-0.03em", color: "#ffffff", textShadow: "0 0 30px rgba(255,255,255,0.18)" },
+  heroTitleAccent: { background: "linear-gradient(90deg, #ec4899, #8b5cf6, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block", marginRight: "20px" },
   heroLine: { position: "relative", zIndex: 1, marginTop: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "18px" },
   heroDivider: { width: "90px", height: "1px", background: "linear-gradient(90deg, transparent, #8b5cf6, transparent)", boxShadow: "0 0 12px rgba(139,92,246,0.8)" },
   heroSubtitle: { margin: 0, color: "#cbd5e1", fontSize: "clamp(0.65rem, 1.2vw, 0.92rem)", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase" },
@@ -397,7 +425,11 @@ heroTitleAccent: {
   graphStageWrapper: { width: "100%", height: "100%", display: "flex", flexDirection: "column" },
   graphCanvas: { position: "relative", width: "100%", height: "460px", flex: 1 },
   graphSvg: { width: "100%", height: "100%" },
-  positionedGraphNode: { position: "absolute", zIndex: 2 },
+  positionedGraphNode: {
+  position: "absolute",
+  zIndex: 2,
+  transform: "translate(-50%, -50%)"
+},
   graphNode: { width: "45px", height: "45px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff", fontSize: "1rem", fontWeight: "bold" },
   graphStats: { display: "flex", gap: "20px", marginBottom: "10px", fontSize: "0.8rem", color: "#94a3b8" },
   graphPathPanel: { marginTop: "15px", background: "#151522", padding: "12px", borderRadius: "12px", border: "1px solid #2a2540" },

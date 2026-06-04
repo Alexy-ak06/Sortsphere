@@ -39,17 +39,21 @@ export function useGraphVisualizer() {
 
   const activeGraphToken = useRef(0);
 
-  const resetGraph = useCallback(() => {
-    activeGraphToken.current++;
-    setIsTraversing(false);
-    setNodeColors(createInitialColors());
-    setNodeScores({});
-    setActiveEdge(null);
+  const resetAllPathData = () => {
     setTraversalPath([]);
     setShortestPath([]);
     setShortestPathEdges([]);
     setDistances({});
+    setNodeScores({});
+    setActiveEdge(null);
+  };
+
+  const resetGraph = useCallback(() => {
+    activeGraphToken.current++;
+    setIsTraversing(false);
+    setNodeColors(createInitialColors());
     setMetrics({ visited: 0, timeElapsed: 0, result: "Idle" });
+    resetAllPathData();
   }, []);
 
   const updateGraphState = (colors, visited, result, startTime, scores = {}) => {
@@ -65,10 +69,7 @@ export function useGraphVisualizer() {
   const runBFS = async (startNode = "A", speed = 300, onLineExecute) => {
     if (isTraversing) return;
     setIsTraversing(true);
-    setTraversalPath([]);
-    setShortestPath([]);
-    setShortestPathEdges([]);
-    setDistances({});
+    resetAllPathData();
     
     const currentToken = ++activeGraphToken.current;
     const colors = createInitialColors();
@@ -120,10 +121,7 @@ export function useGraphVisualizer() {
   const runDFS = async (startNode = "A", speed = 300, onLineExecute) => {
     if (isTraversing) return;
     setIsTraversing(true);
-    setTraversalPath([]);
-    setShortestPath([]);
-    setShortestPathEdges([]);
-    setDistances({});
+    resetAllPathData();
 
     const currentToken = ++activeGraphToken.current;
     const colors = createInitialColors();
@@ -162,13 +160,10 @@ export function useGraphVisualizer() {
     }
   };
 
-  const runDijkstra = async (startNode = "A", speed = 300, onLineExecute) => {
+  const runDijkstra = async (startNode = "A", targetNode = "F", speed = 300, onLineExecute) => {
     if (isTraversing) return;
     setIsTraversing(true);
-    setTraversalPath([]);
-    setShortestPath([]);
-    setShortestPathEdges([]);
-    setDistances({});
+    resetAllPathData();
 
     const currentToken = ++activeGraphToken.current;
     const colors = createInitialColors();
@@ -229,7 +224,6 @@ export function useGraphVisualizer() {
     }
 
     onLineExecute?.(6);
-    const targetNode = "F";
     const path = [];
     let current = targetNode;
     while (current) { path.unshift(current); current = previous[current]; }
@@ -237,7 +231,7 @@ export function useGraphVisualizer() {
     
     const pathEdges = path.slice(0, -1).map((node, index) => [node, path[index + 1]]);
     setShortestPathEdges(pathEdges);
-    
+    setDistances({ [targetNode]: gScore[targetNode] });
     await sleep(speed);
     for (const node of path) {
       colors[node] = shortestPathColor;
@@ -250,18 +244,14 @@ export function useGraphVisualizer() {
     onLineExecute?.(null);
   };
 
-  const runAStar = async (startNode = "A", speed = 300, onLineExecute) => {
+  const runAStar = async (startNode = "A", targetNode = "F", speed = 300, onLineExecute) => {
     if (isTraversing) return;
     setIsTraversing(true);
-    setTraversalPath([]);
-    setShortestPath([]);
-    setShortestPathEdges([]);
-    setDistances({});
+    resetAllPathData();
 
     const currentToken = ++activeGraphToken.current;
     const colors = createInitialColors();
     const startTime = performance.now();
-    const targetNode = "F";
 
     const gScore = {};
     const fScore = {};
@@ -337,7 +327,7 @@ export function useGraphVisualizer() {
     setShortestPath(path);
     const pathEdges = path.slice(0, -1).map((node, index) => [node, path[index + 1]]);
     setShortestPathEdges(pathEdges);
-
+setDistances({ [targetNode]: gScore[targetNode] });
     for (const node of path) {
       colors[node] = shortestPathColor;
       setNodeColors({ ...colors });
@@ -347,7 +337,7 @@ export function useGraphVisualizer() {
     updateGraphState(
       colors,
       closedSet.size,
-      `A* Complete. Path: ${path.join(" → ")}`,
+      `A* Complete. Path: ${path.join(" → ")} | Cost: ${gScore[targetNode]}`,
       startTime,
       scores
     );
